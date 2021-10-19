@@ -85,8 +85,8 @@
 //! // to interact with our Trie
 //! for kv_pair in trie.into_iter() {
 //!     println!("kv_pair: {:?}", kv_pair);
-//!     assert_eq!("thequickbrownfox", String::from_iter(kv_pair.0));
-//!     assert_eq!(kv_pair.1, Some(4));
+//!     assert_eq!("thequickbrownfox", String::from_iter(kv_pair.key));
+//!     assert_eq!(kv_pair.value, Some(4));
 //! }
 //! ```
 //! NB: Because we stripped all of the whitespace out when we built our
@@ -104,6 +104,8 @@
 //!    sub-key duplication
 //!  - Partial matching keys
 //!  - ...
+
+use crate::iterator::KeyValueRef;
 
 /// Atoms which we wish to store in a Trie must implement
 /// TrieAtom.
@@ -276,7 +278,7 @@ impl<A: TrieAtom, V: TrieValue> Trie<A, V> {
     }
 
     /// Create an iterator over the Trie.
-    pub fn iter(&self) -> impl Iterator<Item = (Vec<A>, Option<&V>)> + '_ {
+    pub fn iter(&self) -> impl Iterator<Item = KeyValueRef<'_, A, V>> {
         self.into_iter()
     }
 
