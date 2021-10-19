@@ -76,17 +76,17 @@ impl<A: TrieAtom, V: TrieValue> Iterator for TrieIntoIterator<A, V> {
 }
 
 #[derive(Debug)]
-struct NodeTracker<'a, A: TrieAtom, V: TrieValue>(&'a Node<A, V>, usize);
+struct NodeRef<'a, A: TrieAtom, V: TrieValue>(&'a Node<A, V>, usize);
 
 /// Iterator over a Trie.
 #[derive(Debug)]
-pub struct TrackedTrieIntoIterator<'a, A: TrieAtom, V: TrieValue> {
+pub struct TrieRefIntoIterator<'a, A: TrieAtom, V: TrieValue> {
     results: Vec<KeyValueRef<'a, A, V>>,
     backtrack: usize,
-    nodes: Vec<NodeTracker<'a, A, V>>,
+    nodes: Vec<NodeRef<'a, A, V>>,
 }
 
-impl<'a, A: TrieAtom, V: TrieValue> Iterator for TrackedTrieIntoIterator<'a, A, V> {
+impl<'a, A: TrieAtom, V: TrieValue> Iterator for TrieRefIntoIterator<'a, A, V> {
     type Item = KeyValueRef<'a, A, V>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -118,19 +118,19 @@ impl<'a, A: TrieAtom, V: TrieValue> Iterator for TrackedTrieIntoIterator<'a, A, 
 // Iterator
 impl<'a, A: TrieAtom, V: TrieValue> IntoIterator for &'a Trie<A, V> {
     type Item = KeyValueRef<'a, A, V>;
-    type IntoIter = TrackedTrieIntoIterator<'a, A, V>;
+    type IntoIter = TrieRefIntoIterator<'a, A, V>;
 
     fn into_iter(self) -> Self::IntoIter {
         let mut results: Vec<Self::Item> = vec![];
 
-        let mut nodes = vec![NodeTracker(&self.head, 0)];
+        let mut nodes = vec![NodeRef(&self.head, 0)];
 
         // Create our seed column and results
         Trie::make_tracked_column(&mut nodes);
         Trie::create_tracked_results(&mut results, &nodes[1..]);
 
         results.reverse();
-        TrackedTrieIntoIterator {
+        TrieRefIntoIterator {
             results,
             backtrack: 0,
             nodes,
@@ -156,7 +156,7 @@ impl<'a, A: TrieAtom, V: TrieValue> Trie<A, V> {
         }
     }
 
-    fn make_tracked_column(nodes: &mut Vec<NodeTracker<A, V>>) {
+    fn make_tracked_column(nodes: &mut Vec<NodeRef<A, V>>) {
         loop {
             let index = nodes.len() - 1;
             let mut node = match nodes.get_mut(index) {
@@ -166,7 +166,7 @@ impl<'a, A: TrieAtom, V: TrieValue> Trie<A, V> {
             if node.0.children.len() > node.1 {
                 let child = node.0.children.get(node.1).unwrap();
                 node.1 += 1;
-                nodes.push(NodeTracker(child, 0));
+                nodes.push(NodeRef(child, 0));
             } else {
                 break;
             }
@@ -188,7 +188,7 @@ impl<'a, A: TrieAtom, V: TrieValue> Trie<A, V> {
 
     fn create_tracked_results<'b: 'a>(
         results: &mut Vec<KeyValueRef<'b, A, V>>,
-        nodes: &'a [NodeTracker<'b, A, V>],
+        nodes: &'a [NodeRef<'b, A, V>],
     ) {
         let mut current = vec![];
         for node in nodes {
