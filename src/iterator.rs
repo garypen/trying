@@ -1,15 +1,31 @@
+//! Provides Trie iterators.
+//!
 use crate::trie::{Node, Trie, TrieAtom, TrieValue};
 
+/// Iterator Item
+#[derive(Debug)]
+pub struct KeyValue<A, V> {
+    pub key: Vec<A>,
+    pub value: Option<V>,
+}
+
+/// Iterator Item
+#[derive(Debug)]
+pub struct KeyValueRef<'a, A, V> {
+    pub key: Vec<A>,
+    pub value: Option<&'a V>,
+}
+
 /// Iterator over a Trie.
-#[derive(Default)]
+#[derive(Debug)]
 pub struct TrieIntoIterator<A, V> {
-    results: Vec<(Vec<A>, Option<V>)>,
+    results: Vec<KeyValue<A, V>>,
     backtrack: usize,
     nodes: Vec<Node<A, V>>,
 }
 
 impl<A: TrieAtom, V: TrieValue> IntoIterator for Trie<A, V> {
-    type Item = (Vec<A>, Option<V>);
+    type Item = KeyValue<A, V>;
     type IntoIter = TrieIntoIterator<A, V>;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -31,7 +47,7 @@ impl<A: TrieAtom, V: TrieValue> IntoIterator for Trie<A, V> {
 }
 
 impl<A: TrieAtom, V: TrieValue> Iterator for TrieIntoIterator<A, V> {
-    type Item = (Vec<A>, Option<V>);
+    type Item = KeyValue<A, V>;
 
     fn next(&mut self) -> Option<Self::Item> {
         // Keep return results from our current column, when that is empty try
@@ -59,19 +75,19 @@ impl<A: TrieAtom, V: TrieValue> Iterator for TrieIntoIterator<A, V> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 struct NodeTracker<'a, A: TrieAtom, V: TrieValue>(&'a Node<A, V>, usize);
 
 /// Iterator over a Trie.
-#[derive(Default)]
+#[derive(Debug)]
 pub struct TrackedTrieIntoIterator<'a, A: TrieAtom, V: TrieValue> {
-    results: Vec<(Vec<A>, Option<&'a V>)>,
+    results: Vec<KeyValueRef<'a, A, V>>,
     backtrack: usize,
     nodes: Vec<NodeTracker<'a, A, V>>,
 }
 
 impl<'a, A: TrieAtom, V: TrieValue> Iterator for TrackedTrieIntoIterator<'a, A, V> {
-    type Item = (Vec<A>, Option<&'a V>);
+    type Item = KeyValueRef<'a, A, V>;
 
     fn next(&mut self) -> Option<Self::Item> {
         // Keep return results from our current column, when that is empty try
@@ -101,7 +117,7 @@ impl<'a, A: TrieAtom, V: TrieValue> Iterator for TrackedTrieIntoIterator<'a, A, 
 
 // Iterator
 impl<'a, A: TrieAtom, V: TrieValue> IntoIterator for &'a Trie<A, V> {
-    type Item = (Vec<A>, Option<&'a V>);
+    type Item = KeyValueRef<'a, A, V>;
     type IntoIter = TrackedTrieIntoIterator<'a, A, V>;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -157,25 +173,31 @@ impl<'a, A: TrieAtom, V: TrieValue> Trie<A, V> {
         }
     }
 
-    fn create_results(results: &mut Vec<(Vec<A>, Option<V>)>, nodes: &mut [Node<A, V>]) {
+    fn create_results(results: &mut Vec<KeyValue<A, V>>, nodes: &mut [Node<A, V>]) {
         let mut current = vec![];
         for node in nodes {
             current.push(node.pair.atom);
             if node.terminated {
-                results.push((current.clone(), node.pair.value.take()));
+                results.push(KeyValue {
+                    key: current.clone(),
+                    value: node.pair.value.take(),
+                });
             }
         }
     }
 
     fn create_tracked_results<'b: 'a>(
-        results: &mut Vec<(Vec<A>, Option<&'b V>)>,
+        results: &mut Vec<KeyValueRef<'b, A, V>>,
         nodes: &'a [NodeTracker<'b, A, V>],
     ) {
         let mut current = vec![];
         for node in nodes {
             current.push(node.0.pair.atom);
             if node.0.terminated {
-                results.push((current.clone(), node.0.pair.value.as_ref()));
+                results.push(KeyValueRef {
+                    key: current.clone(),
+                    value: node.0.pair.value.as_ref(),
+                });
             }
         }
     }
@@ -206,7 +228,7 @@ mod tests {
             println!("kv_pair: {:?}", kv_pair);
             assert_eq!(
                 "the quick brown fox",
-                Itertools::intersperse(kv_pair.0.into_iter(), " ").collect::<String>()
+                Itertools::intersperse(kv_pair.key.into_iter(), " ").collect::<String>()
             );
         }
     }
@@ -230,7 +252,7 @@ mod tests {
         trie.insert(input);
         for kv_pair in trie.into_iter() {
             println!("kv_pair: {:?}", kv_pair);
-            println!("string: {:?}", String::from_iter(kv_pair.0));
+            println!("string: {:?}", String::from_iter(kv_pair.key));
         }
     }
 
@@ -253,7 +275,7 @@ mod tests {
         trie.insert(input);
         for kv_pair in (&trie).iter() {
             println!("kv_pair: {:?}", kv_pair);
-            println!("string: {:?}", String::from_iter(kv_pair.0));
+            println!("string: {:?}", String::from_iter(kv_pair.key));
         }
     }
 
@@ -277,7 +299,7 @@ mod tests {
             let mut iterator = trie.clone().into_iter();
             assert_eq!(
                 Some(entry.clone()),
-                iterator.find(|x| x.0 == *entry).map(|x| x.0)
+                iterator.find(|x| x.key == *entry).map(|x| x.key)
             );
         }
     }
@@ -302,7 +324,7 @@ mod tests {
             let mut iterator = trie.iter();
             assert_eq!(
                 Some(entry.clone()),
-                iterator.find(|x| x.0 == *entry).map(|x| x.0)
+                iterator.find(|x| x.key == *entry).map(|x| x.key)
             );
         }
     }
