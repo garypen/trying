@@ -1,18 +1,40 @@
 [package]
 name = "trying"
 version = "0.1.0"
+description = "Basic trie crate"
+authors = [
+  "garypen <garypen@gmail.com>",
+]
+license = "Apache-2.0"
+repository = "https://github.com/garypen/trying"
+readme = "../README.md"
+keywords = ["trie", "collection", "generic"]
+categories = ["data-structures"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 
+[features]
+serde = ["serde_crate"]
+
 [dev-dependencies]
 criterion = "0.3"
 itertools = "0.10"
 rand = "0.8"
+serde_json = "1.0"
+trying = { path = ".", features = ["serde"] }
 unicode-segmentation = "1.8"
 
 [[bench]]
 name = "trying"
 harness = false
+
+[dependencies.serde_crate]
+package = "serde"
+optional = true
+version = "1.0"
+default-features = false
+features = ["derive"]
+

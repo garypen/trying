@@ -1,5 +1,5 @@
-//! Provides a simple Trie implementation for storing "keys" composed of
-//! "atoms". A key may have an associated (optional) value.
+//! Provides a simple Trie implementation for storing keys composed of
+//! sequences of atoms. A key may have an associated (optional) value.
 //!
 //! Atoms must support the TrieAtom trait. Atom values must support the
 //! TrieValue trait.
@@ -102,10 +102,13 @@
 //!  - Interning
 //!  - Storing large numbers of keys with significant amounts of
 //!    sub-key duplication
-//!  - Partial matching keys
+//!  - Prefix matching keys
 //!  - ...
 
 use crate::iterator::KeyValueRef;
+
+#[cfg(feature = "serde")]
+use serde_crate::{Deserialize, Serialize};
 
 /// Atoms which we wish to store in a Trie must implement
 /// TrieAtom.
@@ -133,19 +136,23 @@ where
     // It has the functions it needs already
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(crate = "serde_crate")
+)]
 pub(crate) struct AtomValue<A, V> {
     pub(crate) atom: A,
     pub(crate) value: Option<V>,
 }
 
-impl<A: TrieAtom, V: TrieValue> PartialEq for AtomValue<A, V> {
-    fn eq(&self, other: &Self) -> bool {
-        self.atom == other.atom
-    }
-}
-
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(crate = "serde_crate")
+)]
 pub(crate) struct Node<A, V> {
     pub(crate) children: Vec<Node<A, V>>,
     pub(crate) pair: AtomValue<A, V>,
@@ -153,7 +160,12 @@ pub(crate) struct Node<A, V> {
 }
 
 /// Stores a key of atoms as individual nodes.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
+#[cfg_attr(
+    feature = "serde",
+    derive(Serialize, Deserialize),
+    serde(crate = "serde_crate")
+)]
 pub struct Trie<A, V> {
     pub(crate) head: Node<A, V>,
     count: usize,
@@ -305,13 +317,10 @@ impl<A: TrieAtom, V: TrieValue> Trie<A, V> {
     ) -> (bool, Option<&V>) {
         let mut node = &self.head;
         let mut atoms = key.into_iter().peekable();
-        while let Some(pair) = atoms.next().map(|x| AtomValue {
-            atom: x,
-            value: None,
-        }) {
+        while let Some(atom) = atoms.next() {
             let last_idx = atoms.peek().is_none();
 
-            match node.children.iter().find(|x| x.pair == pair) {
+            match node.children.iter().find(|x| x.pair.atom == atom) {
                 Some(n) => {
                     if last_idx {
                         return f(n);
@@ -336,13 +345,10 @@ impl<A: TrieAtom, V: TrieValue> Trie<A, V> {
     ) -> (bool, Option<V>) {
         let mut node = &mut self.head;
         let mut atoms = key.into_iter().peekable();
-        while let Some(pair) = atoms.next().map(|x| AtomValue {
-            atom: x,
-            value: None,
-        }) {
+        while let Some(atom) = atoms.next() {
             let last_idx = atoms.peek().is_none();
 
-            match node.children.iter_mut().find(|x| x.pair == pair) {
+            match node.children.iter_mut().find(|x| x.pair.atom == atom) {
                 Some(mut n) => {
                     if last_idx {
                         return f(&mut n);
@@ -524,5 +530,18 @@ mod tests {
         assert!(trie.contains(input.clone()));
         assert!(trie.remove(input.clone()).is_some());
         assert!(!trie.contains(input));
+    }
+
+    // serialization test
+    #[test]
+    fn it_serializes_trie_to_json() {
+        let mut t1: Trie<usize, usize> = Trie::new();
+        let input = [0, 1, 2, 3, 4, 5, 6];
+        t1.insert(input);
+        // Round trip via serde to create a new trie and then
+        // check for equality
+        let t_str = serde_json::to_string(&t1).expect("serializing");
+        let t2: Trie<usize, usize> = serde_json::from_str(&t_str).expect("deserializing");
+        assert_eq!(t1, t2);
     }
 }
