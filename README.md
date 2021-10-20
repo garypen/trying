@@ -8,10 +8,10 @@ The trie imposes restrictions on the key and value types:
 With these restrictions in place, the trie implements a reasonably efficient
 mechanism for:
  - prefix matching
- - sorting
+ - representing large quantities of data with common prefixes
 
-If you don't need prefix matching or fast sorting, then a HashMap is almost
-always a better choice than a trie...
+If you don't need prefix matching, then a HashMap is almost always a better
+choice than a trie...
 
 ## Installation
 

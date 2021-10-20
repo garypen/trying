@@ -38,3 +38,10 @@ version = "1.0"
 default-features = false
 features = ["derive"]
 
+[[example]]
+name = "iterator"
+path = "examples/iterator.rs"
+
+[[example]]
+name = "graphemes"
+path = "examples/graphemes.rs"
