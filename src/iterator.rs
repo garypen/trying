@@ -3,14 +3,14 @@
 use crate::trie::{Node, Trie, TrieAtom, TrieValue};
 
 /// Iterator Item
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct KeyValue<A, V> {
     pub key: Vec<A>,
     pub value: Option<V>,
 }
 
 /// Iterator Item
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct KeyValueRef<'a, A, V> {
     pub key: Vec<A>,
     pub value: Option<&'a V>,
@@ -223,13 +223,23 @@ mod tests {
         let mut trie = Trie::new();
         let input = "the quick brown fox".split_whitespace();
         trie.insert_with_value(input.clone(), Some(4));
+        let input = "the quick brown cat".split_whitespace();
+        trie.insert_with_value(input.clone(), Some(4));
+        let input = "lazy dog".split_whitespace();
+        trie.insert_with_value(input.clone(), Some(4));
 
-        for kv_pair in trie.into_iter() {
+        for kv_pair in trie.iter_sorted() {
+            println!("kv_pair: {:?}", kv_pair);
+        }
+
+        if let Some(kv_pair) = trie.into_iter().next() {
             println!("kv_pair: {:?}", kv_pair);
             assert_eq!(
                 "the quick brown fox",
                 Itertools::intersperse(kv_pair.key.into_iter(), " ").collect::<String>()
             );
+        } else {
+            panic!("did not get first line from iterator");
         }
     }
 

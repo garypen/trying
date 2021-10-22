@@ -112,12 +112,12 @@ use serde_crate::{Deserialize, Serialize};
 
 /// Atoms which we wish to store in a Trie must implement
 /// TrieAtom.
-pub trait TrieAtom: Copy + Default + PartialEq {}
+pub trait TrieAtom: Copy + Default + PartialEq + Ord {}
 
 // Blanket implementation which satisfies the compiler
 impl<A> TrieAtom for A
 where
-    A: Copy + Default + PartialEq,
+    A: Copy + Default + PartialEq + Ord,
 {
     // Nothing to implement, since A already supports the other traits.
     // It has the functions it needs already
@@ -292,6 +292,13 @@ impl<A: TrieAtom, V: TrieValue> Trie<A, V> {
     /// Create an iterator over the Trie.
     pub fn iter(&self) -> impl Iterator<Item = KeyValueRef<'_, A, V>> {
         self.into_iter()
+    }
+
+    /// Create a sorted iterator over the Trie.
+    pub fn iter_sorted(&self) -> impl Iterator<Item = KeyValueRef<'_, A, V>> {
+        let mut v = self.into_iter().collect::<Vec<KeyValueRef<'_, A, V>>>();
+        v.sort_by_cached_key(|x| x.key.clone());
+        v.into_iter()
     }
 
     /// Remove the key from the Trie. If the key has an associated value, this
