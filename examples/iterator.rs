@@ -26,8 +26,22 @@ fn main() {
 
     // iterate over our search collection and confirm
     // that all keys are in our search collection
+    println!("unsorted");
     for pair in trie.iter() {
         assert!(searches.contains(&pair.key));
-        println!("key: {}, value: {:?}", String::from_iter(&pair.key), pair.value);
+        println!(
+            "key: {}, value: {:?}",
+            String::from_iter(&pair.key),
+            pair.value
+        );
+    }
+    println!("sorted");
+    for pair in trie.iter_sorted() {
+        assert!(searches.contains(&pair.key));
+        println!(
+            "key: {}, value: {:?}",
+            String::from_iter(&pair.key),
+            pair.value
+        );
     }
 }

@@ -2,7 +2,7 @@
 Provides a simple Trie implementation for storing "keys" composed of "atoms".
 
 The trie imposes restrictions on the key and value types:
- - keys must be: Copy + Default + PartialEq (aggregate trait: TrieAtom)
+ - keys must be: Copy + Default + PartialEq + Ord (aggregate trait: TrieAtom)
  - values must be: Default (aggregate trait: TrieValue)
 
 With these restrictions in place, the trie implements a reasonably efficient
