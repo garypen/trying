@@ -356,9 +356,9 @@ impl<A: TrieAtom, V: TrieValue> Trie<A, V> {
             let last_idx = atoms.peek().is_none();
 
             match node.children.iter_mut().find(|x| x.pair.atom == atom) {
-                Some(mut n) => {
+                Some(n) => {
                     if last_idx {
-                        return f(&mut n);
+                        return f(n);
                     }
                     node = n;
                 }

@@ -1,6 +1,6 @@
 [package]
 name = "trying"
-version = "0.1.0"
+version = "0.1.1"
 description = "Basic trie crate"
 authors = [
   "garypen <garypen@gmail.com>",
@@ -10,7 +10,7 @@ repository = "https://github.com/garypen/trying"
 readme = "README.md"
 keywords = ["trie", "collection", "generic"]
 categories = ["data-structures"]
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
