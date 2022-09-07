@@ -13,6 +13,10 @@ mechanism for:
 If you don't need prefix matching, then a HashMap is almost always a better
 choice than a trie...
 
+[![Crates.io](https://img.shields.io/crates/v/trying.svg)](https://crates.io/crates/trying)
+
+[API Docs](https://docs.rs/trying/latest/trying)
+
 ## Installation
 
 ```toml
