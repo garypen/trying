@@ -215,6 +215,7 @@ impl<A: TrieAtom, V: TrieValue> Trie<A, V> {
     }
 
     /// How many keys does the Trie contain?
+    #[inline(always)]
     pub fn count(&self) -> usize {
         self.count
     }
@@ -223,6 +224,26 @@ impl<A: TrieAtom, V: TrieValue> Trie<A, V> {
     pub fn get<K: IntoIterator<Item = A>>(&self, key: K) -> Option<&V> {
         self.contains_internal(key, |n: &Node<A, V>| (n.terminated, n.pair.value.as_ref()))
             .1
+    }
+
+    /// Get the longest common prefixes of the trie.
+    ///
+    /// This will be a Vec of prefixes. At least one, but possibly many more depending on
+    /// the nature of the data contained within the trie.
+    pub fn get_lcps<K: FromIterator<A>>(&self) -> Vec<K> {
+        // The lcp will return a vec of longest prefixes
+        let mut result = vec![];
+        for node in self.head.children.iter() {
+            let mut lcp: Vec<A> = vec![];
+            let mut current_node = node;
+            while current_node.children.len() == 1 && !current_node.terminated {
+                lcp.push(current_node.pair.atom);
+                current_node = current_node.children.get(0).unwrap();
+            }
+            lcp.push(current_node.pair.atom);
+            result.push(lcp.into_iter().collect());
+        }
+        result
     }
 
     /// Insert the key (with a value of None) into the Trie. If the key is
@@ -550,5 +571,173 @@ mod tests {
         let t_str = serde_json::to_string(&t1).expect("serializing");
         let t2: Trie<usize, usize> = serde_json::from_str(&t_str).expect("deserializing");
         assert_eq!(t1, t2);
+    }
+    #[test]
+    fn it_can_find_lcp() {
+        let input = vec![
+            "code",
+            "coder",
+            "coding",
+            "codable",
+            "codec",
+            "codecs",
+            "coded",
+            "codeless",
+            "codependence",
+            "codependency",
+            "codependent",
+            "codependents",
+            "codes",
+            "a",
+            "codesign",
+            "codesigned",
+            "codeveloped",
+            "codeveloper",
+            "abc",
+            "codex",
+            "codify",
+            "codiscovered",
+            "codrive",
+            "abz",
+        ];
+        let mut trie: Trie<char, ()> = Trie::new();
+        for entry in input {
+            trie.insert(entry.chars());
+        }
+        assert_eq!(vec!["cod", "a"], trie.get_lcps::<String>());
+    }
+
+    #[test]
+    fn it_can_find_lcp_usize() {
+        let input = vec![
+            vec![1, 11, 111, 1111],
+            vec![1, 11, 111, 1111, 11112],
+            vec![1, 11, 111, 1111, 11113],
+        ];
+        let mut trie: Trie<usize, ()> = Trie::new();
+        for entry in input {
+            trie.insert(entry);
+        }
+        assert_eq!(vec![vec![1, 11, 111, 1111]], trie.get_lcps::<Vec<usize>>());
+    }
+
+    #[test]
+    fn it_can_iter_sorted() {
+        let input = vec![
+            "lexicographic",
+            "sorting",
+            "of",
+            "a",
+            "set",
+            "of",
+            "keys",
+            "can",
+            "be",
+            "accomplished",
+            "with",
+            "a",
+            "simple",
+            "trie",
+            "based",
+            "algorithm",
+            "we",
+            "insert",
+            "all",
+            "keys",
+            "in",
+            "a",
+            "trie",
+            "output",
+            "all",
+            "keys",
+            "in",
+            "the",
+            "trie",
+            "by",
+            "means",
+            "of",
+            "preorder",
+            "traversal",
+            "which",
+            "results",
+            "in",
+            "output",
+            "that",
+            "is",
+            "in",
+            "lexicographically",
+            "increasing",
+            "order",
+            "preorder",
+            "traversal",
+            "is",
+            "a",
+            "kind",
+            "of",
+            "depth",
+            "first",
+            "traversal",
+        ];
+        let mut trie: Trie<char, ()> = Trie::new();
+        for entry in input {
+            trie.insert(entry.chars());
+        }
+        let sorted_words: Vec<String> = trie
+            .iter_sorted()
+            .into_iter()
+            .map(|x| x.key.iter().collect())
+            .collect();
+        println!("sorted_words: {:?}", sorted_words);
+    }
+
+    #[test]
+    fn it_can_find_maximum_occurring_entry() {
+        let input = vec![
+            "code",
+            "coder",
+            "coding",
+            "codable",
+            "codec",
+            "codecs",
+            "coded",
+            "codeless",
+            "codec",
+            "codecs",
+            "codependence",
+            "codex",
+            "codify",
+            "codependents",
+            "codes",
+            "code",
+            "coder",
+            "codesign",
+            "codec",
+            "codeveloper",
+            "codrive",
+            "codec",
+            "codecs",
+            "codiscovered",
+        ];
+        let mut trie: Trie<char, usize> = Trie::new();
+        for entry in input {
+            let ch = entry.chars();
+            match trie.get(ch.clone()) {
+                Some(v) => trie.insert_with_value(ch, Some(v + 1)),
+                None => trie.insert_with_value(ch, Some(1)),
+            };
+        }
+        let mut answer = None;
+        let mut highest = 0;
+        for entry in trie.iter() {
+            if let Some(&v) = entry.value {
+                if v > highest {
+                    highest = v;
+                    answer = Some(entry.key.clone());
+                }
+            }
+        }
+        // There should be 4 "codec"
+        assert_eq!(highest, 4);
+        assert_eq!(answer, Some(vec!['c', 'o', 'd', 'e', 'c']));
     }
 }
