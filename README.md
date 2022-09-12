@@ -21,7 +21,7 @@ choice than a trie...
 
 ```toml
 [dependencies]
-trying = "0.1"
+trying = "0.2"
 ```
 
 [Features are available](https://github.com/garypen/trying/blob/main/Cargo.toml#L19).
