@@ -208,7 +208,7 @@ impl<K: TrieKey<A>, A: TrieAtom, V: TrieValue> Trie<K, A, V> {
     ///
     /// This will be a Vec of prefixes. At least one, but possibly many more depending on
     /// the nature of the data contained within the trie.
-    pub fn get_lcps<I: FromIterator<A>>(&self) -> Vec<I> {
+    pub fn get_lcps(&self) -> Vec<K> {
         // The lcp will return a vec of longest prefixes
         let mut result = vec![];
         for node in self.head.children.iter() {
@@ -582,7 +582,7 @@ mod tests {
         for entry in input {
             trie.insert(entry.chars());
         }
-        assert_eq!(vec!["cod", "a"], trie.get_lcps::<String>());
+        assert_eq!(vec!["cod", "a"], trie.get_lcps());
     }
 
     #[test]
@@ -596,7 +596,7 @@ mod tests {
         for entry in input {
             trie.insert(entry);
         }
-        assert_eq!(vec![vec![1, 11, 111, 1111]], trie.get_lcps::<Vec<usize>>());
+        assert_eq!(vec![vec![1, 11, 111, 1111]], trie.get_lcps());
     }
 
     #[test]
