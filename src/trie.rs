@@ -1,16 +1,7 @@
-//! Provides a simple Trie implementation for storing keys composed of
-//! sequences of atoms. A key may have an associated (optional) value.
+//! Trie implementation
 //!
-//! Atoms must support the TrieAtom trait. Atom values must support the
-//! TrieValue trait.
-//!
-//! The interface relies on iterators to insert, remove, check for existence
-//! of keys. Because the trie is based on the concept of atoms, then it
-//! is up to the user to decide what kind of atoms to use to make most sense
-//! of the keys we are storing.
-//!
-//! This flexibility can be really useful when string processing. Here are
-//! three examples which show that we can work with keys of:
+//! Here are three examples which show that we can work with keys composed
+//! from different types of atoms:
 //!  - chars
 //!  - grapheme clusters
 //!  - &str ('words')
@@ -20,16 +11,16 @@
 //!
 //! Example 1
 //! ```
-//! use trying::trie::Trie;
+//! use trying::trie::TrieString;
 //!
-//! let mut trie = Trie::new();
+//! let mut trie = TrieString::<usize>::new();
 //! let input = "abcdef".chars();
 //! trie.insert_with_value(input.clone(), Some("abcdef".len()));
 //!
 //! // Anything which implements IntoIterator<Item=char> can now be used
 //! // to interact with our Trie
-//! assert!(trie.contains(input.clone())); // Clone the original iterator
-//! assert!(trie.contains("abcdef".chars())); // Create a new iterator
+//! assert!(trie.contains(input.clone())); // The original iterator
+//! assert!(trie.contains("abcdef".chars())); // A new iterator
 //! assert!(trie.contains(['a', 'b', 'c', 'd', 'e', 'f'])); // Build an array, etc...
 //! assert_eq!(trie.get(['a', 'b', 'c', 'd', 'e', 'f']), Some(&"abcdef".len())); // Get our value back
 //! assert_eq!(trie.remove(input.clone()), Some("abcdef".len()));
@@ -38,10 +29,10 @@
 //!
 //! Example 2
 //! ```
-//! use trying::trie::Trie;
+//! use trying::trie::TrieVec;
 //! use unicode_segmentation::UnicodeSegmentation;
 //!
-//! let mut trie: Trie<&str, usize> = Trie::new();
+//! let mut trie = TrieVec::<&str, usize>::new();
 //! let s = "a̐éö̲\r\n";
 //! let input = s.graphemes(true);
 //! trie.insert(input.clone());
@@ -54,9 +45,9 @@
 //!
 //! Example 3
 //! ```
-//! use trying::trie::Trie;
+//! use trying::trie::TrieVec;
 //!
-//! let mut trie = Trie::new();
+//! let mut trie = TrieVec::<&str, usize>::new();
 //! let input = "the quick brown fox".split_whitespace();
 //! trie.insert_with_value(input.clone(), Some(4));
 //!
@@ -67,48 +58,21 @@
 //! assert_eq!(trie.remove(input.clone()), Some(4));
 //! assert!(!trie.contains(input));
 //! ```
-//!
-//! Here's an example of how we can iterate over our Trie. We use the
-//! `FromIterator` trait to reconstruct our source key from the
-//! vector of atoms which the iterator returns as the key.
-//!
-//! Example 4
-//! ```
-//! use std::iter::FromIterator;
-//! use trying::trie::Trie;
-//!
-//! let mut trie = Trie::new();
-//! let input = "the quick brown fox".split_whitespace();
-//! trie.insert_with_value(input, Some(4));
-//!
-//! // Anything which implements IntoIterator<Item=&str> can now be used
-//! // to interact with our Trie
-//! for kv_pair in trie.into_iter() {
-//!     println!("kv_pair: {:?}", kv_pair);
-//!     assert_eq!("thequickbrownfox", String::from_iter(kv_pair.key));
-//!     assert_eq!(kv_pair.value, Some(4));
-//! }
-//! ```
-//! NB: Because we stripped all of the whitespace out when we built our
-//! key, there is no whitespace in the re-assembled value. Until
-//! `intersperse` is added to the std library, the simplest way to do
-//! this right now is to use itertools. e.g.:
-//! ```rustdoc
-//! use itertools::Itertools;
-//! assert_eq!("the quick brown fox", Itertools::intersperse(kv_pair.0.into_iter(), " ").collect::<String>());
-//! ```
-//!
-//! Typical usages for this data structure:
-//!  - Interning
-//!  - Storing large numbers of keys with significant amounts of
-//!    sub-key duplication
-//!  - Prefix matching keys
-//!  - ...
 
 use crate::iterator::KeyValueRef;
 
+use std::iter::FromIterator;
+
 #[cfg(feature = "serde")]
 use serde_crate::{Deserialize, Serialize};
+
+// Some types of trie are likely to be very common, so let's define some types for them
+
+/// Convenience for typical String processing. Equivalent to `Trie<String, char, A>`
+pub type TrieString<V> = Trie<String, char, V>;
+
+/// Convenience for typical processing. Equivalent to `Trie<Vec<A>, A, V>`
+pub type TrieVec<A, V> = Trie<Vec<A>, A, V>;
 
 /// Atoms which we wish to store in a Trie must implement
 /// TrieAtom.
@@ -120,6 +84,19 @@ where
     A: Copy + Default + PartialEq + Ord,
 {
     // Nothing to implement, since A already supports the other traits.
+    // It has the functions it needs already
+}
+
+/// Keys which we wish to store in a Trie must implement
+/// TrieKey.
+pub trait TrieKey<A>: Clone + Default + Ord + FromIterator<A> {}
+
+// Blanket implementation which satisfies the compiler
+impl<A, K> TrieKey<A> for K
+where
+    K: Clone + Default + Ord + FromIterator<A>,
+{
+    // Nothing to implement, since K already supports the other traits.
     // It has the functions it needs already
 }
 
@@ -166,9 +143,10 @@ pub(crate) struct Node<A, V> {
     derive(Serialize, Deserialize),
     serde(crate = "serde_crate")
 )]
-pub struct Trie<A, V> {
+pub struct Trie<K, A, V> {
     pub(crate) head: Node<A, V>,
     count: usize,
+    phantom: std::marker::PhantomData<K>,
 }
 
 impl<A: TrieAtom, V: TrieValue> Node<A, V> {
@@ -188,7 +166,7 @@ impl<A: TrieAtom, V: TrieValue> Node<A, V> {
     }
 }
 
-impl<A: TrieAtom, V: TrieValue> Trie<A, V> {
+impl<K: TrieKey<A>, A: TrieAtom, V: TrieValue> Trie<K, A, V> {
     /// Create a new Trie.
     pub fn new() -> Self {
         Self {
@@ -204,7 +182,7 @@ impl<A: TrieAtom, V: TrieValue> Trie<A, V> {
     }
 
     /// Does the Trie contain the supplied key?
-    pub fn contains<K: IntoIterator<Item = A>>(&self, key: K) -> bool {
+    pub fn contains<I: IntoIterator<Item = A>>(&self, key: I) -> bool {
         self.contains_internal(key, |n: &Node<A, V>| (n.terminated, None))
             .0
     }
@@ -221,7 +199,7 @@ impl<A: TrieAtom, V: TrieValue> Trie<A, V> {
     }
 
     /// Get a reference to a key's associated value.
-    pub fn get<K: IntoIterator<Item = A>>(&self, key: K) -> Option<&V> {
+    pub fn get<I: IntoIterator<Item = A>>(&self, key: I) -> Option<&V> {
         self.contains_internal(key, |n: &Node<A, V>| (n.terminated, n.pair.value.as_ref()))
             .1
     }
@@ -230,7 +208,7 @@ impl<A: TrieAtom, V: TrieValue> Trie<A, V> {
     ///
     /// This will be a Vec of prefixes. At least one, but possibly many more depending on
     /// the nature of the data contained within the trie.
-    pub fn get_lcps<K: FromIterator<A>>(&self) -> Vec<K> {
+    pub fn get_lcps<I: FromIterator<A>>(&self) -> Vec<I> {
         // The lcp will return a vec of longest prefixes
         let mut result = vec![];
         for node in self.head.children.iter() {
@@ -249,16 +227,16 @@ impl<A: TrieAtom, V: TrieValue> Trie<A, V> {
     /// Insert the key (with a value of None) into the Trie. If the key is
     /// already present the value is updated to None. Returns the previously
     /// associated value.
-    pub fn insert<K: IntoIterator<Item = A>>(&mut self, key: K) -> Option<V> {
+    pub fn insert<I: IntoIterator<Item = A>>(&mut self, key: I) -> Option<V> {
         self.insert_with_value(key, None)
     }
 
     /// Insert the key and value into the Trie. If the key is already present
     /// the value is updated to the new value. Returns the previously
     /// associated value.
-    pub fn insert_with_value<K: IntoIterator<Item = A>>(
+    pub fn insert_with_value<I: IntoIterator<Item = A>>(
         &mut self,
-        key: K,
+        key: I,
         value: Option<V>,
     ) -> Option<V> {
         let mut node = &mut self.head;
@@ -311,21 +289,21 @@ impl<A: TrieAtom, V: TrieValue> Trie<A, V> {
     }
 
     /// Create an iterator over the Trie.
-    pub fn iter(&self) -> impl Iterator<Item = KeyValueRef<'_, A, V>> {
+    pub fn iter(&self) -> impl Iterator<Item = KeyValueRef<'_, K, A, V>> {
         self.into_iter()
     }
 
     /// Create a sorted iterator over the Trie.
-    pub fn iter_sorted(&self) -> impl Iterator<Item = KeyValueRef<'_, A, V>> {
-        let mut v = self.into_iter().collect::<Vec<KeyValueRef<'_, A, V>>>();
-        v.sort_by_cached_key(|x| x.key.clone());
+    pub fn iter_sorted(&self) -> impl Iterator<Item = KeyValueRef<'_, K, A, V>> {
+        let mut v = self.into_iter().collect::<Vec<KeyValueRef<'_, K, A, V>>>();
+        v.sort_by_key(|x| x.key.clone());
         v.into_iter()
     }
 
     /// Remove the key from the Trie. If the key has an associated value, this
     /// is returned. If the key is not present or has an associated value of
     /// None, None is returned.
-    pub fn remove<K: IntoIterator<Item = A>>(&mut self, key: K) -> Option<V> {
+    pub fn remove<I: IntoIterator<Item = A>>(&mut self, key: I) -> Option<V> {
         let closure = |mut n: &mut Node<A, V>| {
             let present = n.terminated;
             n.terminated = false;
@@ -338,9 +316,9 @@ impl<A: TrieAtom, V: TrieValue> Trie<A, V> {
         result.1
     }
 
-    fn contains_internal<F: Fn(&Node<A, V>) -> (bool, Option<&V>), K: IntoIterator<Item = A>>(
+    fn contains_internal<F: Fn(&Node<A, V>) -> (bool, Option<&V>), I: IntoIterator<Item = A>>(
         &self,
-        key: K,
+        key: I,
         f: F,
     ) -> (bool, Option<&V>) {
         let mut node = &self.head;
@@ -365,10 +343,10 @@ impl<A: TrieAtom, V: TrieValue> Trie<A, V> {
 
     fn contains_internal_mut<
         F: Fn(&mut Node<A, V>) -> (bool, Option<V>),
-        K: IntoIterator<Item = A>,
+        I: IntoIterator<Item = A>,
     >(
         &mut self,
-        key: K,
+        key: I,
         f: F,
     ) -> (bool, Option<V>) {
         let mut node = &mut self.head;
@@ -399,13 +377,13 @@ mod tests {
 
     #[test]
     fn it_inserts_new_key() {
-        let mut trie: Trie<char, usize> = Trie::new();
+        let mut trie = TrieString::<usize>::new();
         trie.insert("abcdef".chars());
     }
 
     #[test]
     fn it_finds_exact_key() {
-        let mut trie: Trie<char, usize> = Trie::new();
+        let mut trie = TrieString::<usize>::new();
         let input = "abcdef".chars();
         trie.insert(input.clone());
         assert!(trie.contains(input));
@@ -413,7 +391,7 @@ mod tests {
 
     #[test]
     fn it_cannot_find_longer_key() {
-        let mut trie: Trie<char, usize> = Trie::new();
+        let mut trie = TrieString::<usize>::new();
         let input = "abcdef".chars();
         let long_input = "abcdefg".chars();
         trie.insert(input);
@@ -422,7 +400,7 @@ mod tests {
 
     #[test]
     fn it_cannot_find_shorter_key() {
-        let mut trie: Trie<char, usize> = Trie::new();
+        let mut trie = TrieString::<usize>::new();
         let input = "abcdef".chars();
         let short_input = "abcde".chars();
         trie.insert(input);
@@ -431,7 +409,7 @@ mod tests {
 
     #[test]
     fn it_can_find_multiple_overlapping_keys() {
-        let mut trie: Trie<char, usize> = Trie::new();
+        let mut trie = TrieString::<usize>::new();
         let input = "abcdef".chars();
         trie.insert(input.clone());
         let short_input = "abc".chars();
@@ -442,7 +420,7 @@ mod tests {
 
     #[test]
     fn it_can_find_prefix_keys() {
-        let mut trie: Trie<char, usize> = Trie::new();
+        let mut trie = TrieString::<usize>::new();
         let input = "abcdef".chars();
         let short_input = "abc".chars();
         trie.insert(input);
@@ -451,7 +429,7 @@ mod tests {
 
     #[test]
     fn it_can_remove_a_present_key() {
-        let mut trie: Trie<char, usize> = Trie::new();
+        let mut trie = TrieString::<usize>::new();
         let input = "abcdef".chars();
         trie.insert(input.clone());
         assert!(trie.contains(input.clone()));
@@ -461,7 +439,7 @@ mod tests {
 
     #[test]
     fn it_can_remove_a_missing_key() {
-        let mut trie: Trie<char, usize> = Trie::new();
+        let mut trie = TrieString::<usize>::new();
         let input = "abcdef".chars();
         assert!(trie.remove(input.clone()).is_none());
         assert!(!trie.contains(input));
@@ -469,7 +447,7 @@ mod tests {
 
     #[test]
     fn it_can_return_previously_inserted_value() {
-        let mut trie: Trie<char, usize> = Trie::new();
+        let mut trie = TrieString::<usize>::new();
         let input = "abcdef".chars();
         trie.insert_with_value(input.clone(), Some(666));
         assert_eq!(trie.insert_with_value(input.clone(), Some(667)), Some(666));
@@ -480,13 +458,13 @@ mod tests {
 
     #[test]
     fn it_can_create_an_empty_trie() {
-        let trie: Trie<char, usize> = Trie::new();
+        let trie = TrieString::<usize>::new();
         assert!(trie.is_empty());
     }
 
     #[test]
     fn it_can_clear_a_trie() {
-        let mut trie: Trie<char, usize> = Trie::new();
+        let mut trie = TrieString::<usize>::new();
         let input = "abcdef".chars();
         trie.insert(input.clone());
         trie.clear();
@@ -496,7 +474,7 @@ mod tests {
 
     #[test]
     fn it_can_count_entries() {
-        let mut trie: Trie<char, usize> = Trie::new();
+        let mut trie = TrieString::<usize>::new();
         let input = "abcdef".chars();
         trie.insert(input.clone());
         assert_eq!(1, trie.count());
@@ -514,14 +492,14 @@ mod tests {
     // usize unit tests
     #[test]
     fn it_inserts_new_usize_key() {
-        let mut trie: Trie<usize, usize> = Trie::new();
+        let mut trie = TrieVec::<usize, usize>::new();
         let input: Vec<usize> = vec![0, 1, 2, 3, 4, 5, 6];
         trie.insert(input);
     }
 
     #[test]
     fn it_finds_exact_usize_key() {
-        let mut trie: Trie<usize, usize> = Trie::new();
+        let mut trie = TrieVec::<usize, usize>::new();
         let input = [0, 1, 2, 3, 4, 5, 6];
         trie.insert(input);
         assert!(trie.contains(input));
@@ -529,7 +507,7 @@ mod tests {
 
     #[test]
     fn it_cannot_find_short_usize_key() {
-        let mut trie: Trie<usize, usize> = Trie::new();
+        let mut trie = TrieVec::<usize, usize>::new();
         let input = [0, 1, 2, 3, 4, 5, 6];
         let input_short = [0, 1, 2, 3, 4, 5];
         trie.insert(input);
@@ -539,7 +517,7 @@ mod tests {
     // grapheme cluster unit test
     #[test]
     fn it_can_process_grapheme_clusters() {
-        let mut trie: Trie<&str, bool> = Trie::new();
+        let mut trie = TrieVec::<&str, bool>::new();
         let s = "a̐éö̲\r\n";
         let input = s.graphemes(true);
         trie.insert(input.clone());
@@ -551,7 +529,7 @@ mod tests {
     // &str unit test
     #[test]
     fn it_can_process_str_clusters() {
-        let mut trie = Trie::new();
+        let mut trie = TrieVec::<&str, usize>::new();
         let input = "the quick brown fox".split_whitespace();
         trie.insert_with_value(input.clone(), Some(5));
         assert_eq!(trie.get(input.clone()), Some(&5));
@@ -563,13 +541,13 @@ mod tests {
     // serialization test
     #[test]
     fn it_serializes_trie_to_json() {
-        let mut t1: Trie<usize, usize> = Trie::new();
+        let mut t1 = TrieVec::<usize, usize>::new();
         let input = [0, 1, 2, 3, 4, 5, 6];
         t1.insert(input);
         // Round trip via serde to create a new trie and then
         // check for equality
         let t_str = serde_json::to_string(&t1).expect("serializing");
-        let t2: Trie<usize, usize> = serde_json::from_str(&t_str).expect("deserializing");
+        let t2: TrieVec<usize, usize> = serde_json::from_str(&t_str).expect("deserializing");
         assert_eq!(t1, t2);
     }
     #[test]
@@ -600,7 +578,7 @@ mod tests {
             "codrive",
             "abz",
         ];
-        let mut trie: Trie<char, ()> = Trie::new();
+        let mut trie = TrieString::<()>::new();
         for entry in input {
             trie.insert(entry.chars());
         }
@@ -614,7 +592,7 @@ mod tests {
             vec![1, 11, 111, 1111, 11112],
             vec![1, 11, 111, 1111, 11113],
         ];
-        let mut trie: Trie<usize, ()> = Trie::new();
+        let mut trie = TrieVec::<usize, ()>::new();
         for entry in input {
             trie.insert(entry);
         }
@@ -678,15 +656,11 @@ mod tests {
             "first",
             "traversal",
         ];
-        let mut trie: Trie<char, ()> = Trie::new();
+        let mut trie = TrieString::<()>::new();
         for entry in input {
             trie.insert(entry.chars());
         }
-        let sorted_words: Vec<String> = trie
-            .iter_sorted()
-            .into_iter()
-            .map(|x| x.key.iter().collect())
-            .collect();
+        let sorted_words: Vec<String> = trie.iter_sorted().map(|x| x.key).collect();
         println!("sorted_words: {:?}", sorted_words);
     }
 
@@ -718,13 +692,14 @@ mod tests {
             "codecs",
             "codiscovered",
         ];
-        let mut trie: Trie<char, usize> = Trie::new();
+        let mut trie = TrieString::<usize>::new();
         for entry in input {
             let ch = entry.chars();
-            match trie.get(ch.clone()) {
-                Some(v) => trie.insert_with_value(ch, Some(v + 1)),
-                None => trie.insert_with_value(ch, Some(1)),
+            let value = match trie.get(ch.clone()) {
+                Some(v) => v + 1,
+                None => 1,
             };
+            trie.insert_with_value(ch, Some(value));
         }
         let mut answer = None;
         let mut highest = 0;
@@ -738,6 +713,6 @@ mod tests {
         }
         // There should be 4 "codec"
         assert_eq!(highest, 4);
-        assert_eq!(answer, Some(vec!['c', 'o', 'd', 'e', 'c']));
+        assert_eq!(answer, Some("codec".to_string()));
     }
 }

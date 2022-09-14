@@ -2,8 +2,11 @@
 Provides a simple Trie implementation for storing "keys" composed of "atoms".
 
 The trie imposes restrictions on the key and value types:
- - keys must be: Copy + Default + PartialEq + Ord (aggregate trait: TrieAtom)
+ - keys must be: Clone + Default + Ord + FromIterator<A> (aggregate trait: TrieKey)
+ - atoms must be: Copy + Default + PartialEq + Ord (aggregate trait: TrieAtom)
  - values must be: Default (aggregate trait: TrieValue)
+
+(where A represents the Atom type that the key will be represented as)
 
 With these restrictions in place, the trie implements a reasonably efficient
 mechanism for:
@@ -21,7 +24,7 @@ choice than a trie...
 
 ```toml
 [dependencies]
-trying = "0.2"
+trying = "0.3"
 ```
 
 [Features are available](https://github.com/garypen/trying/blob/main/Cargo.toml#L19).

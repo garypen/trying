@@ -1,9 +1,9 @@
-use trying::trie::Trie;
+use trying::trie::TrieVec;
 use unicode_segmentation::UnicodeSegmentation;
 
 fn main() {
     // Create our trie
-    let mut trie = Trie::new();
+    let mut trie = TrieVec::<&str, usize>::new();
 
     // Insert some graphemes
     let s = "a̐éö̲\r\n";

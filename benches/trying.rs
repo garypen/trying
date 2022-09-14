@@ -1,4 +1,4 @@
-use trying::trie::{Trie, TrieAtom, TrieValue};
+use trying::trie::{Trie, TrieAtom, TrieKey, TrieString, TrieValue, TrieVec};
 
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion, Throughput};
 use rand::{
@@ -21,7 +21,7 @@ fn get_text() -> Vec<String> {
         .collect()
 }
 
-fn make_trie(words: &[String]) -> Trie<char, usize> {
+fn make_trie(words: &[String]) -> TrieString<usize> {
     let mut trie = Trie::new();
     for w in words {
         let len = w.len();
@@ -62,7 +62,7 @@ fn trie_insert_remove(b: &mut Criterion) {
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
-    let mut trie: Trie<char, usize> = Trie::new();
+    let mut trie = TrieString::<usize>::new();
     c.bench_function("inserting: char items (len: 1..=512)", |b| {
         b.iter_batched(
             || {
@@ -111,7 +111,7 @@ fn iterate(c: &mut Criterion) {
             BenchmarkId::new("consuming iteration (char)", size),
             size,
             |b, &size| {
-                let mut trie: Trie<char, usize> = Trie::new();
+                let mut trie = TrieString::<usize>::new();
                 for _i in 0..POPULATION_SIZE {
                     let entry: Vec<char> = thread_rng()
                         .sample_iter(&Alphanumeric)
@@ -127,7 +127,7 @@ fn iterate(c: &mut Criterion) {
             BenchmarkId::new("reference iteration (char)", size),
             size,
             |b, &size| {
-                let mut trie: Trie<char, usize> = Trie::new();
+                let mut trie = TrieString::<usize>::new();
                 for _i in 0..POPULATION_SIZE {
                     let entry: Vec<char> = thread_rng()
                         .sample_iter(&Alphanumeric)
@@ -164,7 +164,7 @@ fn search(c: &mut Criterion) {
             BenchmarkId::new("random find (usize)", size),
             size,
             |b, &size| {
-                let mut trie: Trie<usize, usize> = Trie::new();
+                let mut trie = TrieVec::<usize, usize>::new();
                 for _i in 0..POPULATION_SIZE {
                     let entry: Vec<usize> = thread_rng()
                         .sample_iter(Standard)
@@ -187,7 +187,7 @@ fn search(c: &mut Criterion) {
             BenchmarkId::new("always find (usize)", size),
             size,
             |b, &size| {
-                let mut trie: Trie<usize, usize> = Trie::new();
+                let mut trie = TrieVec::<usize, usize>::new();
                 let mut searches: Vec<Vec<usize>> = vec![];
                 for _i in 0..POPULATION_SIZE {
                     let entry: Vec<usize> = thread_rng()
@@ -208,7 +208,7 @@ fn search(c: &mut Criterion) {
             BenchmarkId::new("random find (char)", size),
             size,
             |b, &size| {
-                let mut trie: Trie<char, usize> = Trie::new();
+                let mut trie = TrieString::<usize>::new();
                 for _i in 0..POPULATION_SIZE {
                     let entry: Vec<char> = thread_rng()
                         .sample_iter(&Alphanumeric)
@@ -233,7 +233,7 @@ fn search(c: &mut Criterion) {
             BenchmarkId::new("always find (char)", size),
             size,
             |b, &size| {
-                let mut trie: Trie<char, usize> = Trie::new();
+                let mut trie = TrieString::<usize>::new();
                 let mut searches: Vec<Vec<char>> = vec![];
                 for _i in 0..POPULATION_SIZE {
                     let entry: Vec<char> = thread_rng()
@@ -266,24 +266,24 @@ criterion_group!(
 );
 criterion_main!(benches);
 
-fn insert_trie<S: IntoIterator<Item = A>, A: TrieAtom, V: TrieValue>(
-    trie: &mut Trie<A, V>,
+fn insert_trie<S: IntoIterator<Item = A>, K: TrieKey<A>, A: TrieAtom, V: TrieValue>(
+    trie: &mut Trie<K, A, V>,
     input: S,
 ) {
     trie.insert(input);
 }
 
-fn contains_trie<S: IntoIterator<Item = A>, A: TrieAtom, V: TrieValue>(
-    trie: &Trie<A, V>,
+fn contains_trie<S: IntoIterator<Item = A>, K: TrieKey<A>, A: TrieAtom, V: TrieValue>(
+    trie: &Trie<K, A, V>,
     input: S,
 ) {
     trie.contains(input);
 }
 
-fn iterate_trie<A: TrieAtom, V: TrieValue>(trie: Trie<A, V>) {
+fn iterate_trie<K: TrieKey<A>, A: TrieAtom, V: TrieValue>(trie: Trie<K, A, V>) {
     trie.into_iter().for_each(|_x| ());
 }
 
-fn iterate_trie_ref<A: TrieAtom, V: TrieValue>(trie: &Trie<A, V>) {
+fn iterate_trie_ref<K: TrieKey<A>, A: TrieAtom, V: TrieValue>(trie: &Trie<K, A, V>) {
     trie.iter().for_each(|_x| ());
 }
