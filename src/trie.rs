@@ -204,6 +204,83 @@ impl<K: TrieKey<A>, A: TrieAtom, V: TrieValue> Trie<K, A, V> {
             .1
     }
 
+    /// Get alternative to a supplied key
+    pub fn get_alternatives<I: Clone + IntoIterator<Item = A>>(
+        &self,
+        key: I,
+        limit: usize,
+    ) -> Vec<K> {
+        // Search for our key, if we find it, then just return it
+        if self
+            .contains_internal(key.clone(), |n: &Node<A, V>| (n.terminated, None))
+            .0
+        {
+            return vec![K::from_iter(key)];
+        } else {
+            let mut new_key: Vec<A> = vec![];
+
+            let mut atoms = key.into_iter().peekable();
+            while let Some(atom) = atoms.next() {
+                let last_idx = atoms.peek().is_none();
+                if last_idx {
+                    break;
+                } else {
+                    new_key.push(atom);
+                }
+            }
+            let mut base = vec![];
+
+            let mut node = &self.head;
+
+            for atom in new_key.into_iter() {
+                match node.children.iter().find(|x| x.pair.atom == atom) {
+                    Some(n) => {
+                        base.push(n.pair.atom);
+                        node = n;
+                    }
+                    None => {
+                        break;
+                    }
+                }
+            }
+
+            // Now start to build our list of alternatives
+            let mut alternatives = vec![];
+
+            // Logic is convoluted. May improve in future...
+            loop {
+                for mut child in node.children.iter().take(limit) {
+                    // Build an alternative
+                    let mut alternative = base.clone();
+                    while !child.terminated && !child.children.is_empty() {
+                        alternative.push(child.pair.atom);
+                        child = &child.children[0];
+                    }
+                    alternative.push(child.pair.atom);
+
+                    // Evaluate the alternative
+                    let candidate = K::from_iter(alternative);
+                    if !alternatives.contains(&candidate) {
+                        alternatives.push(candidate);
+                        // Have we reached our specified limit?
+                        if alternatives.len() == limit {
+                            break;
+                        }
+                    }
+                }
+                // Have we run out of alternatives to consider without reaching
+                // our specified limit
+                if node.children.is_empty() || node.children.len() > alternatives.len() {
+                    break;
+                } else {
+                    node = &node.children[0];
+                    base.push(node.pair.atom);
+                }
+            }
+            alternatives
+        }
+    }
+
     /// Get the longest common prefixes of the trie.
     ///
     /// This will be a Vec of prefixes. At least one, but possibly many more depending on
@@ -714,5 +791,44 @@ mod tests {
         // There should be 4 "codec"
         assert_eq!(highest, 4);
         assert_eq!(answer, Some("codec".to_string()));
+    }
+
+    #[test]
+    fn it_can_find_alternatives() {
+        let input = vec![
+            "code",
+            "coder",
+            "coding",
+            "codable",
+            "codec",
+            "codecs",
+            "coded",
+            "codeless",
+            "codec",
+            "codecs",
+            "codependence",
+            "codex",
+            "codify",
+            "codependents",
+            "codes",
+            "code",
+            "coder",
+            "codesign",
+            "codec",
+            "codeveloper",
+            "codrive",
+            "codec",
+            "codecs",
+            "codiscovered",
+        ];
+        let mut trie = TrieString::<()>::new();
+        for entry in input {
+            let ch = entry.chars();
+            trie.insert(ch);
+        }
+        assert_eq!(
+            trie.get_alternatives("codg".chars(), 5),
+            ["code", "coding", "codable", "codrive", "coder"]
+        )
     }
 }
