@@ -215,7 +215,7 @@ impl<K: TrieKey<A>, A: TrieAtom, V: TrieValue> Trie<K, A, V> {
             .contains_internal(key.clone(), |n: &Node<A, V>| (n.terminated, None))
             .0
         {
-            return vec![K::from_iter(key)];
+            vec![K::from_iter(key)]
         } else {
             let mut new_key: Vec<A> = vec![];
 
