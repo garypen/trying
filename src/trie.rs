@@ -76,12 +76,12 @@ pub type TrieVec<A, V> = Trie<Vec<A>, A, V>;
 
 /// Atoms which we wish to store in a Trie must implement
 /// TrieAtom.
-pub trait TrieAtom: Copy + Default + PartialEq + Ord {}
+pub trait TrieAtom: Copy + Default + PartialEq + Ord + std::fmt::Debug {}
 
 // Blanket implementation which satisfies the compiler
 impl<A> TrieAtom for A
 where
-    A: Copy + Default + PartialEq + Ord,
+    A: Copy + Default + PartialEq + Ord + std::fmt::Debug,
 {
     // Nothing to implement, since A already supports the other traits.
     // It has the functions it needs already
@@ -102,12 +102,12 @@ where
 
 /// Values which we wish to store in a Trie must implement
 /// TrieValue.
-pub trait TrieValue: Default {}
+pub trait TrieValue: Default + std::fmt::Debug {}
 
 // Blanket implementation which satisfies the compiler
 impl<V> TrieValue for V
 where
-    V: Default,
+    V: Default + std::fmt::Debug,
 {
     // Nothing to implement, since V already supports the other traits.
     // It has the functions it needs already
@@ -299,6 +299,48 @@ impl<K: TrieKey<A>, A: TrieAtom, V: TrieValue> Trie<K, A, V> {
             result.push(lcp.into_iter().collect());
         }
         result
+    }
+
+    /// Get the shortest unique prefix for a key
+    ///
+    /// This will be an option, since:
+    ///  - the key may not exist in the trie
+    ///  - there may not be a unique prefix.
+    pub fn get_sup<I: IntoIterator<Item = A>>(&self, key: I) -> Option<K> {
+        let mut node = &self.head;
+
+        let mut nodes = vec![];
+        let mut master = vec![];
+
+        for atom in key {
+            match node.children.iter().find(|x| x.pair.atom == atom) {
+                Some(n) => {
+                    nodes.push((n, node.children.len()));
+                    master.push(n.pair.atom);
+                    node = n;
+                }
+                None => {
+                    // Key isn't in the trie
+                    return None;
+                }
+            }
+        }
+
+        // Now, remove the correct number of nodes from our key to find the sup.
+        // The logic is to search backwards through our set of nodes until
+        // we find one with !1 child.
+        let mut remove = 0;
+        nodes.reverse();
+
+        for node in nodes {
+            if node.1 == 1 {
+                remove += 1;
+            } else {
+                master.truncate(master.len() - remove);
+                return Some(master.into_iter().collect());
+            }
+        }
+        None
     }
 
     /// Insert the key (with a value of None) into the Trie. If the key is
@@ -674,6 +716,53 @@ mod tests {
             trie.insert(entry);
         }
         assert_eq!(vec![vec![1, 11, 111, 1111]], trie.get_lcps());
+    }
+
+    #[test]
+    fn it_can_find_sups_that_exist() {
+        let input = vec!["AND", "BONFIRE", "BOOL", "CASE", "CATCH", "CHAR"];
+        let output = vec!["A", "BON", "BOO", "CAS", "CAT", "CH"];
+        let mut trie = TrieString::<()>::new();
+
+        for entry in input.clone() {
+            trie.insert(entry.chars());
+        }
+
+        for (inn, out) in input.into_iter().zip(output.into_iter()) {
+            assert_eq!(trie.get_sup(inn.to_string().chars()), Some(out.to_string()));
+        }
+    }
+
+    #[test]
+    fn it_cannot_find_sups_that_have_prefixes() {
+        let base = vec!["AND", "BONFIRE", "BOOL", "CASE", "CATCH", "CHAR"];
+        let input = vec!["ANDY", "BONFIREY", "BOOLY", "CASEY", "CATCHY", "CHARY"];
+        let output = vec![None; 6];
+        let mut trie = TrieString::<()>::new();
+
+        for entry in base {
+            trie.insert(entry.chars());
+        }
+
+        for (inn, out) in input.into_iter().zip(output.into_iter()) {
+            assert_eq!(trie.get_sup(inn.to_string().chars()), out);
+        }
+    }
+
+    #[test]
+    fn it_cannot_find_sups_that_are_just_wrong() {
+        let base = vec!["AND", "BONFIRE", "BOOL", "CASE", "CATCH", "CHAR"];
+        let input = vec!["WHAT", "IS", "THIS", "TEST", "ALL", "ABOUT"];
+        let output = vec![None; 6];
+        let mut trie = TrieString::<()>::new();
+
+        for entry in base {
+            trie.insert(entry.chars());
+        }
+
+        for (inn, out) in input.into_iter().zip(output.into_iter()) {
+            assert_eq!(trie.get_sup(inn.to_string().chars()), out);
+        }
     }
 
     #[test]

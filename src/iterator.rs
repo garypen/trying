@@ -254,7 +254,7 @@ mod tests {
     use crate::trie::{TrieString, TrieVec};
     use itertools::Itertools;
     use rand::{distributions::Alphanumeric, thread_rng, Rng};
-    use std::iter::FromIterator;
+    use std::collections::HashSet;
 
     #[test]
     fn it_iterates_over_empty_trie() {
@@ -333,26 +333,20 @@ mod tests {
         static POPULATION_SIZE: usize = 1000;
         static SIZE: usize = 64;
         let mut trie = TrieString::<usize>::new();
-        let mut searches: Vec<Vec<char>> = vec![];
+        let mut input: HashSet<(String, Option<usize>)> = HashSet::new();
         for _i in 0..POPULATION_SIZE {
             let entry: Vec<char> = thread_rng()
                 .sample_iter(&Alphanumeric)
                 .take(thread_rng().gen_range(1..=SIZE))
                 .map(char::from)
                 .collect();
-            searches.push(entry.clone());
             let len = entry.len();
+            input.insert((String::from_iter(entry.clone()), Some(len)));
             trie.insert_with_value(entry, Some(len));
         }
-        for entry in &searches {
-            let mut iterator = trie.clone().into_iter();
-            assert_eq!(
-                Some(String::from_iter(entry.clone())),
-                iterator
-                    .find(|x| x.key == String::from_iter(entry.clone()))
-                    .map(|x| x.key)
-            );
-        }
+        let output: HashSet<(String, Option<usize>)> =
+            trie.into_iter().map(|x| (x.key, x.value)).collect();
+        assert_eq!(input, output);
     }
 
     #[test]
@@ -360,25 +354,19 @@ mod tests {
         static POPULATION_SIZE: usize = 1000;
         static SIZE: usize = 64;
         let mut trie = TrieString::<usize>::new();
-        let mut searches: Vec<Vec<char>> = vec![];
+        let mut input: HashSet<(String, Option<usize>)> = HashSet::new();
         for _i in 0..POPULATION_SIZE {
             let entry: Vec<char> = thread_rng()
                 .sample_iter(&Alphanumeric)
                 .take(thread_rng().gen_range(1..=SIZE))
                 .map(char::from)
                 .collect();
-            searches.push(entry.clone());
             let len = entry.len();
+            input.insert((String::from_iter(entry.clone()), Some(len)));
             trie.insert_with_value(entry, Some(len));
         }
-        for entry in &searches {
-            let mut iterator = trie.iter();
-            assert_eq!(
-                Some(String::from_iter(entry.clone())),
-                iterator
-                    .find(|x| x.key == String::from_iter(entry.clone()))
-                    .map(|x| x.key)
-            );
-        }
+        let output: HashSet<(String, Option<usize>)> =
+            trie.iter().map(|x| (x.key, x.value.cloned())).collect();
+        assert_eq!(input, output);
     }
 }

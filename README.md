@@ -12,6 +12,9 @@ With these restrictions in place, the trie implements a reasonably efficient
 mechanism for:
  - prefix matching
  - representing large quantities of data with common prefixes
+ - finding shortest unique prefix
+ - finding alternative values
+ - finding longest common prefixes
 
 For Example:
 
@@ -44,7 +47,7 @@ choice than a trie...
 
 ```toml
 [dependencies]
-trying = "0.3"
+trying = "0.4"
 ```
 
 [Features are available](https://github.com/garypen/trying/blob/main/Cargo.toml#L19).
