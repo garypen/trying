@@ -76,12 +76,12 @@ pub type TrieVec<A, V> = Trie<Vec<A>, A, V>;
 
 /// Atoms which we wish to store in a Trie must implement
 /// TrieAtom.
-pub trait TrieAtom: Copy + Default + PartialEq + Ord + std::fmt::Debug {}
+pub trait TrieAtom: Copy + Default + PartialEq + Ord {}
 
 // Blanket implementation which satisfies the compiler
 impl<A> TrieAtom for A
 where
-    A: Copy + Default + PartialEq + Ord + std::fmt::Debug,
+    A: Copy + Default + PartialEq + Ord,
 {
     // Nothing to implement, since A already supports the other traits.
     // It has the functions it needs already
@@ -102,12 +102,12 @@ where
 
 /// Values which we wish to store in a Trie must implement
 /// TrieValue.
-pub trait TrieValue: Default + std::fmt::Debug {}
+pub trait TrieValue: Default {}
 
 // Blanket implementation which satisfies the compiler
 impl<V> TrieValue for V
 where
-    V: Default + std::fmt::Debug,
+    V: Default,
 {
     // Nothing to implement, since V already supports the other traits.
     // It has the functions it needs already
