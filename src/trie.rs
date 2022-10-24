@@ -147,6 +147,7 @@ pub struct Trie<K, A, V> {
     pub(crate) head: Node<A, V>,
     count: usize,
     phantom: std::marker::PhantomData<K>,
+    atoms: usize,
 }
 
 impl<A: TrieAtom, V: TrieValue> Node<A, V> {
@@ -179,6 +180,7 @@ impl<K: TrieKey<A>, A: TrieAtom, V: TrieValue> Trie<K, A, V> {
     pub fn clear(&mut self) {
         self.head = Node::default();
         self.count = 0;
+        self.atoms = 0;
     }
 
     /// Does the Trie contain the supplied key?
@@ -196,6 +198,12 @@ impl<K: TrieKey<A>, A: TrieAtom, V: TrieValue> Trie<K, A, V> {
     #[inline(always)]
     pub fn count(&self) -> usize {
         self.count
+    }
+
+    /// How many atoms does the Trie contain?
+    #[inline(always)]
+    pub fn atoms(&self) -> usize {
+        self.atoms
     }
 
     /// Get a reference to a key's associated value.
@@ -248,7 +256,7 @@ impl<K: TrieKey<A>, A: TrieAtom, V: TrieValue> Trie<K, A, V> {
             let mut alternatives = vec![];
 
             // Logic is convoluted. May improve in future...
-            loop {
+            'outer: loop {
                 for mut child in node.children.iter().take(limit) {
                     // Build an alternative
                     let mut alternative = base.clone();
@@ -264,13 +272,13 @@ impl<K: TrieKey<A>, A: TrieAtom, V: TrieValue> Trie<K, A, V> {
                         alternatives.push(candidate);
                         // Have we reached our specified limit?
                         if alternatives.len() == limit {
-                            break;
+                            break 'outer;
                         }
                     }
                 }
                 // Have we run out of alternatives to consider without reaching
                 // our specified limit
-                if node.children.is_empty() || node.children.len() > alternatives.len() {
+                if node.children.is_empty() {
                     break;
                 } else {
                     node = &node.children[0];
@@ -387,10 +395,12 @@ impl<K: TrieKey<A>, A: TrieAtom, V: TrieValue> Trie<K, A, V> {
                     if last_idx {
                         self.count += 1;
                         let new_node = Node::terminated(AtomValue { atom, value });
+                        self.atoms += 1;
                         node.children.push(new_node);
                         break;
                     } else {
                         let new_node = Node::new(AtomValue { atom, value: None });
+                        self.atoms += 1;
                         node.children.push(new_node);
                     };
                     node.children.len() - 1
