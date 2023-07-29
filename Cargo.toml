@@ -1,6 +1,6 @@
 [package]
 name = "trying"
-version = "0.5.0"
+version = "0.5.1"
 description = "Basic trie crate"
 authors = [
   "garypen <garypen@gmail.com>",
