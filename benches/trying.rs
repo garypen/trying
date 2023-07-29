@@ -11,7 +11,7 @@ fn get_text() -> Vec<String> {
     use std::io::Read;
     const DATA: &[&str] = &["data/1984.txt", "data/sun-rising.txt"];
     let mut contents = String::new();
-    File::open(&DATA[1])
+    File::open(DATA[1])
         .unwrap()
         .read_to_string(&mut contents)
         .unwrap();

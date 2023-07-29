@@ -777,7 +777,7 @@ mod tests {
 
     #[test]
     fn it_can_iter_sorted() {
-        let input = vec![
+        let mut input = vec![
             "lexicographic",
             "sorting",
             "of",
@@ -833,11 +833,14 @@ mod tests {
             "traversal",
         ];
         let mut trie = TrieString::<()>::new();
-        for entry in input {
+        for entry in &input {
             trie.insert(entry.chars());
         }
         let sorted_words: Vec<String> = trie.iter_sorted().map(|x| x.key).collect();
-        println!("sorted_words: {:?}", sorted_words);
+        // Sort our input and deduplicate it
+        input.sort();
+        input.dedup();
+        assert_eq!(input, sorted_words);
     }
 
     #[test]

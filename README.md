@@ -47,7 +47,7 @@ choice than a trie...
 
 ```toml
 [dependencies]
-trying = "0.4"
+trying = "0.5"
 ```
 
 [Features are available](https://github.com/garypen/trying/blob/main/Cargo.toml#L19).

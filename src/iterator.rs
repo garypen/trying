@@ -273,12 +273,7 @@ mod tests {
         let input = "lazy dog".split_whitespace();
         trie.insert_with_value(input.clone(), Some(2));
 
-        for kv_pair in trie.iter_sorted() {
-            println!("kv_pair: {:?}", kv_pair);
-        }
-
         if let Some(kv_pair) = trie.into_iter().next() {
-            println!("kv_pair: {:?}", kv_pair);
             assert_eq!(
                 "the quick brown fox",
                 Itertools::intersperse(kv_pair.key.into_iter(), " ").collect::<String>()
