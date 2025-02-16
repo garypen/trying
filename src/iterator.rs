@@ -196,7 +196,7 @@ impl<'a, A: TrieAtom, V: TrieValue, K: TrieKey<A>> Trie<K, A, V> {
     fn make_tracked_column(nodes: &mut Vec<NodeRef<A, V>>) {
         loop {
             let index = nodes.len() - 1;
-            let mut node = match nodes.get_mut(index) {
+            let node = match nodes.get_mut(index) {
                 Some(n) => n,
                 None => break,
             };
