@@ -21,7 +21,7 @@ serde = ["serde_crate"]
 
 [dev-dependencies]
 criterion = "0.8"
-itertools = "0.11"
+itertools = "0.14"
 rand = "0.8"
 serde_json = "1.0"
 trying = { path = ".", features = ["serde"] }
