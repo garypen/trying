@@ -253,7 +253,7 @@ impl<'a, A: TrieAtom, V: TrieValue, K: TrieKey<A>> Trie<K, A, V> {
 mod tests {
     use crate::trie::{TrieString, TrieVec};
     use itertools::Itertools;
-    use rand::{distributions::Alphanumeric, thread_rng, Rng};
+    use rand::{distr::Alphanumeric, rng, Rng};
     use std::collections::HashSet;
 
     #[test]
@@ -330,9 +330,9 @@ mod tests {
         let mut trie = TrieString::<usize>::new();
         let mut input: HashSet<(String, Option<usize>)> = HashSet::new();
         for _i in 0..POPULATION_SIZE {
-            let entry: Vec<char> = thread_rng()
+            let entry: Vec<char> = rng()
                 .sample_iter(&Alphanumeric)
-                .take(thread_rng().gen_range(1..=SIZE))
+                .take(rng().random_range(1..=SIZE))
                 .map(char::from)
                 .collect();
             let len = entry.len();
@@ -351,9 +351,9 @@ mod tests {
         let mut trie = TrieString::<usize>::new();
         let mut input: HashSet<(String, Option<usize>)> = HashSet::new();
         for _i in 0..POPULATION_SIZE {
-            let entry: Vec<char> = thread_rng()
+            let entry: Vec<char> = rng()
                 .sample_iter(&Alphanumeric)
-                .take(thread_rng().gen_range(1..=SIZE))
+                .take(rng().random_range(1..=SIZE))
                 .map(char::from)
                 .collect();
             let len = entry.len();

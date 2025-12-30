@@ -2,8 +2,8 @@ use trying::trie::{Trie, TrieAtom, TrieKey, TrieString, TrieValue, TrieVec};
 
 use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion, Throughput};
 use rand::{
-    distributions::{Alphanumeric, Standard},
-    thread_rng, Rng,
+    distr::{Alphanumeric, Uniform},
+    rng, Rng,
 };
 
 fn get_text() -> Vec<String> {
@@ -66,9 +66,9 @@ fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("inserting: char items (len: 1..=512)", |b| {
         b.iter_batched(
             || {
-                thread_rng()
+                rng()
                     .sample_iter(&Alphanumeric)
-                    .take(thread_rng().gen_range(1..=512))
+                    .take(rng().random_range(1..=512))
                     .map(char::from)
             },
             |input| insert_trie(&mut trie, input),
@@ -78,9 +78,9 @@ fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("contains: char items (len: 1..=512)", |b| {
         b.iter_batched(
             || {
-                thread_rng()
+                rng()
                     .sample_iter(&Alphanumeric)
-                    .take(thread_rng().gen_range(1..=512))
+                    .take(rng().random_range(1..=512))
                     .map(char::from)
             },
             |input| contains_trie(&trie, input),
@@ -113,9 +113,9 @@ fn iterate(c: &mut Criterion) {
             |b, &size| {
                 let mut trie = TrieString::<usize>::new();
                 for _i in 0..POPULATION_SIZE {
-                    let entry: Vec<char> = thread_rng()
+                    let entry: Vec<char> = rng()
                         .sample_iter(&Alphanumeric)
-                        .take(thread_rng().gen_range(1..=size))
+                        .take(rng().random_range(1..=size))
                         .map(char::from)
                         .collect();
                     trie.insert(entry);
@@ -129,9 +129,9 @@ fn iterate(c: &mut Criterion) {
             |b, &size| {
                 let mut trie = TrieString::<usize>::new();
                 for _i in 0..POPULATION_SIZE {
-                    let entry: Vec<char> = thread_rng()
+                    let entry: Vec<char> = rng()
                         .sample_iter(&Alphanumeric)
-                        .take(thread_rng().gen_range(1..=size))
+                        .take(rng().random_range(1..=size))
                         .map(char::from)
                         .collect();
                     trie.insert(entry);
@@ -159,6 +159,7 @@ fn search(c: &mut Criterion) {
     ]
     .iter()
     {
+        let range = Uniform::new_inclusive(1, size).unwrap();
         group.throughput(Throughput::Bytes(*size as u64));
         group.bench_with_input(
             BenchmarkId::new("random find (usize)", size),
@@ -166,18 +167,14 @@ fn search(c: &mut Criterion) {
             |b, &size| {
                 let mut trie = TrieVec::<usize, usize>::new();
                 for _i in 0..POPULATION_SIZE {
-                    let entry: Vec<usize> = thread_rng()
-                        .sample_iter(Standard)
-                        .take(thread_rng().gen_range(1..=size))
+                    let entry: Vec<usize> = rng()
+                        .sample_iter(range)
+                        .take(rng().random_range(1..=size))
                         .collect();
                     trie.insert(entry);
                 }
                 b.iter_batched(
-                    || {
-                        thread_rng()
-                            .sample_iter(Standard)
-                            .take(thread_rng().gen_range(1..=size))
-                    },
+                    || rng().sample_iter(range).take(rng().random_range(1..=size)),
                     |input| contains_trie(&trie, input),
                     BatchSize::SmallInput,
                 )
@@ -190,15 +187,15 @@ fn search(c: &mut Criterion) {
                 let mut trie = TrieVec::<usize, usize>::new();
                 let mut searches: Vec<Vec<usize>> = vec![];
                 for _i in 0..POPULATION_SIZE {
-                    let entry: Vec<usize> = thread_rng()
-                        .sample_iter(Standard)
-                        .take(thread_rng().gen_range(1..=size))
+                    let entry: Vec<usize> = rng()
+                        .sample_iter(range)
+                        .take(rng().random_range(1..=size))
                         .collect();
                     searches.push(entry.clone());
                     trie.insert(entry);
                 }
                 b.iter_batched(
-                    || searches[thread_rng().gen_range(1..POPULATION_SIZE)].clone(),
+                    || searches[rng().random_range(1..POPULATION_SIZE)].clone(),
                     |input| contains_trie(&trie, input),
                     BatchSize::SmallInput,
                 )
@@ -210,18 +207,18 @@ fn search(c: &mut Criterion) {
             |b, &size| {
                 let mut trie = TrieString::<usize>::new();
                 for _i in 0..POPULATION_SIZE {
-                    let entry: Vec<char> = thread_rng()
+                    let entry: Vec<char> = rng()
                         .sample_iter(&Alphanumeric)
-                        .take(thread_rng().gen_range(1..=size))
+                        .take(rng().random_range(1..=size))
                         .map(char::from)
                         .collect();
                     trie.insert(entry);
                 }
                 b.iter_batched(
                     || {
-                        thread_rng()
+                        rng()
                             .sample_iter(&Alphanumeric)
-                            .take(thread_rng().gen_range(1..=size))
+                            .take(rng().random_range(1..=size))
                             .map(char::from)
                     },
                     |input| contains_trie(&trie, input),
@@ -236,16 +233,16 @@ fn search(c: &mut Criterion) {
                 let mut trie = TrieString::<usize>::new();
                 let mut searches: Vec<Vec<char>> = vec![];
                 for _i in 0..POPULATION_SIZE {
-                    let entry: Vec<char> = thread_rng()
+                    let entry: Vec<char> = rng()
                         .sample_iter(&Alphanumeric)
-                        .take(thread_rng().gen_range(1..=size))
+                        .take(rng().random_range(1..=size))
                         .map(char::from)
                         .collect();
                     searches.push(entry.clone());
                     trie.insert(entry);
                 }
                 b.iter_batched(
-                    || searches[thread_rng().gen_range(1..POPULATION_SIZE)].clone(),
+                    || searches[rng().random_range(1..POPULATION_SIZE)].clone(),
                     |input| contains_trie(&trie, input),
                     BatchSize::SmallInput,
                 )
