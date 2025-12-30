@@ -301,7 +301,7 @@ impl<K: TrieKey<A>, A: TrieAtom, V: TrieValue> Trie<K, A, V> {
             let mut current_node = node;
             while current_node.children.len() == 1 && !current_node.terminated {
                 lcp.push(current_node.pair.atom);
-                current_node = current_node.children.get(0).unwrap();
+                current_node = current_node.children.first().unwrap();
             }
             lcp.push(current_node.pair.atom);
             result.push(lcp.into_iter().collect());
@@ -379,7 +379,7 @@ impl<K: TrieKey<A>, A: TrieAtom, V: TrieValue> Trie<K, A, V> {
                 .enumerate()
                 .find(|(_i, x)| x.pair.atom == atom)
             {
-                Some((i, mut n)) => {
+                Some((i, n)) => {
                     if last_idx {
                         if !n.terminated {
                             self.count += 1;
@@ -433,7 +433,7 @@ impl<K: TrieKey<A>, A: TrieAtom, V: TrieValue> Trie<K, A, V> {
     /// is returned. If the key is not present or has an associated value of
     /// None, None is returned.
     pub fn remove<I: IntoIterator<Item = A>>(&mut self, key: I) -> Option<V> {
-        let closure = |mut n: &mut Node<A, V>| {
+        let closure = |n: &mut Node<A, V>| {
             let present = n.terminated;
             n.terminated = false;
             (present, n.pair.value.take())

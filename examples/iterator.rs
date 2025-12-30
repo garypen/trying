@@ -1,4 +1,4 @@
-use rand::{distributions::Alphanumeric, thread_rng, Rng};
+use rand::{distr::Alphanumeric, rng, Rng};
 use std::iter::FromIterator;
 use trying::trie::Trie;
 
@@ -14,9 +14,9 @@ fn main() {
     // composed of between 1 and 10 characters in
     // our search collection and our trie.
     for _i in 0..POPULATION_SIZE {
-        let entry: Vec<char> = thread_rng()
+        let entry: Vec<char> = rng()
             .sample_iter(&Alphanumeric)
-            .take(thread_rng().gen_range(1..=SIZE))
+            .take(rng().random_range(1..=SIZE))
             .map(char::from)
             .collect();
         searches.push(entry.clone());
