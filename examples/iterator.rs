@@ -1,4 +1,4 @@
-use rand::{distr::Alphanumeric, rng, Rng};
+use rand::{distr::Alphanumeric, rng, RngExt};
 use std::iter::FromIterator;
 use trying::trie::Trie;
 
