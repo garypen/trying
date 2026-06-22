@@ -253,7 +253,7 @@ impl<'a, A: TrieAtom, V: TrieValue, K: TrieKey<A>> Trie<K, A, V> {
 mod tests {
     use crate::trie::{TrieString, TrieVec};
     use itertools::Itertools;
-    use rand::{distr::Alphanumeric, rng, Rng};
+    use rand::{distr::Alphanumeric, rng, RngExt};
     use std::collections::HashSet;
 
     #[test]
